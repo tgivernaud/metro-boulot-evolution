@@ -37,6 +37,26 @@ jobs:
           test -s godot/assets/characters/CesiumMan.glb
           test -s godot/assets/props/ToyCar.glb
           test -s godot/assets/props/Lantern.glb
+      - name: Installer Kenney City Kit Commercial (CC0, 16 vrais bâtiments)
+        run: |
+          curl -fL --retry 3 -o /tmp/kenney-city.zip https://kenney.nl/media/pages/assets/city-kit-commercial/a742d900eb-1753115042/kenney_city-kit-commercial_2.1.zip
+          echo "f8b09b081c2bb88bcc126e2dec1cb40fd0dad7e7e591b6c26aaefe96fb35276b  /tmp/kenney-city.zip" | sha256sum -c -
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          import re
+          source=Path('/tmp/kenney-city.zip')
+          destination=Path('godot/assets/kenney')
+          destination.mkdir(parents=True,exist_ok=True)
+          with ZipFile(source) as archive:
+              glbs=[n for n in archive.namelist() if n.lower().endswith('.glb') and not n.startswith('__MACOSX')]
+              glbs.sort(key=lambda n:(not bool(re.search(r'building|skyscraper|office|shop|store|commercial',Path(n).stem,re.I)),n))
+              if len(glbs)<8:
+                  raise RuntimeError(f'Pack Kenney sans modèles GLB suffisants: {len(glbs)}')
+              for i,name in enumerate(glbs[:16]):
+                  (destination/f'building_{i:02d}.glb').write_bytes(archive.read(name))
+              print(f'Imported {min(16,len(glbs))} Kenney CC0 models')
+          PY
       - name: Import Godot et validation du projet
         run: |
           set -e
