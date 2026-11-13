@@ -249,7 +249,9 @@ func _build_player() -> void:
     if ResourceLoader.exists(character_path):
         var packed := load(character_path) as PackedScene
         if packed != null:
-            var character := packed.instantiate()
+            var character := packed.instantiate() as Node3D
+            if character == null:
+                return
             player.add_child(character)
             body.visible = false
             head.visible = false
