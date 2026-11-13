@@ -173,6 +173,23 @@ func _build_player() -> void:
     head.material_override = _mat(Color("#d7a58c"))
     head.position.y = 1.85
     player.add_child(head)
+    # Asset pipeline downloads the glTF model before Godot imports the project.
+    # Keep primitive avatar as fallback for offline editing.
+    var character_path := "res://assets/characters/CesiumMan.glb"
+    if ResourceLoader.exists(character_path):
+        var packed := load(character_path) as PackedScene
+        if packed != null:
+            var character := packed.instantiate()
+            player.add_child(character)
+            body.visible = false
+            head.visible = false
+            character.scale = Vector3.ONE
+            var anims := character.find_children("*", "AnimationPlayer", true, false)
+            for animation_node in anims:
+                var anim_player := animation_node as AnimationPlayer
+                if anim_player != null and anim_player.get_animation_list().size() > 0:
+                    anim_player.play(anim_player.get_animation_list()[0])
+                    break
     pivot = Node3D.new()
     add_child(pivot)
     pivot.global_position = player.global_position + Vector3(0,1.45,0)
