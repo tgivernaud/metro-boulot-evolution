@@ -1,0 +1,37 @@
+name: Godot 4 - validation et assets 3D
+on:
+  push:
+    paths:
+      - 'godot/**'
+      - '.github/workflows/godot-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Godot 4.3
+        run: |
+          curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp
+          chmod +x /tmp/Godot_v4.3-stable_linux.x86_64
+          sudo mv /tmp/Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
+      - name: Télécharger un véritable personnage 3D animé (Khronos)
+        run: |
+          mkdir -p godot/assets/characters
+          curl -fL --retry 3 -o godot/assets/characters/CesiumMan.glb https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb
+          test -s godot/assets/characters/CesiumMan.glb
+      - name: Importer les modèles et vérifier les scripts
+        run: |
+          godot --headless --path godot --editor --import --quit
+          godot --headless --path godot --quit-after 10
+      - name: Conserver le projet avec les assets téléchargés
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-boulot-godot-source
+          path: godot/
+          retention-days: 7
