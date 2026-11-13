@@ -103,7 +103,7 @@ func _build_city() -> void:
                     _box(self, Vector3(x+5.56,float(level),z+offset),Vector3(0.08,1.8,1.7),Color("#6e9ba8"),false)
     for i in range(25):
         var x := float(-54 + (i % 5) * 24 + 2)
-        var z := float(-54 + (i / 5) * 24 + 2)
+        var z := float(-54 + int(i / 5) * 24 + 2)
         _tree(Vector3(x,0,z))
     _target("Appartement",Vector3(-7,0,-7),Color("#e2a868"))
     _target("Bureau",Vector3(7,0,-7),Color("#77b9d0"))
@@ -174,8 +174,8 @@ func _build_player() -> void:
     head.position.y = 1.85
     player.add_child(head)
     pivot = Node3D.new()
-    player.add_child(pivot)
-    pivot.position.y = 1.45
+    add_child(pivot)
+    pivot.global_position = player.global_position + Vector3(0,1.45,0)
     cam = Camera3D.new()
     cam.current = true
     cam.position = Vector3(0,2.0,5.8)
@@ -278,6 +278,7 @@ func _physics_process(delta: float) -> void:
     player.move_and_slide()
     if movement.length() > 0.05:
         player.rotation.y = atan2(-movement.x,-movement.z)
+    pivot.global_position = player.global_position + Vector3(0,1.45,0)
     pivot.rotation.y = yaw
     cam.rotation.x = pitch
     joystick_knob.position = Vector2(55,55)+touch_axis*48
