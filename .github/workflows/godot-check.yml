@@ -1,4 +1,4 @@
-name: Godot 4 - validation et assets 3D
+name: Godot 4 - build jouable sur iPhone
 on:
   push:
     paths:
@@ -6,11 +6,11 @@ on:
       - '.github/workflows/godot-check.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  validate:
+  web:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - name: Installer Godot 4.3
@@ -19,19 +19,52 @@ jobs:
           unzip -q /tmp/godot.zip -d /tmp
           chmod +x /tmp/Godot_v4.3-stable_linux.x86_64
           sudo mv /tmp/Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
-      - name: Télécharger un véritable personnage 3D animé (Khronos)
+          godot --version
+      - name: Installer les templates d'export officiels
         run: |
-          mkdir -p godot/assets/characters
-          curl -fL --retry 3 -o godot/assets/characters/CesiumMan.glb https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb
+          curl -fL --retry 3 -o /tmp/templates.tpz https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.3.stable"
+          unzip -q /tmp/templates.tpz -d /tmp/godot-templates
+          cp -a /tmp/godot-templates/templates/. "$HOME/.local/share/godot/export_templates/4.3.stable/"
+      - name: Récupérer les vrais modèles 3D
+        run: |
+          set -e
+          BASE=https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models
+          mkdir -p godot/assets/characters godot/assets/props
+          curl -fL --retry 3 -o godot/assets/characters/CesiumMan.glb "$BASE/CesiumMan/glTF-Binary/CesiumMan.glb"
+          curl -fL --retry 3 -o godot/assets/props/ToyCar.glb "$BASE/ToyCar/glTF-Binary/ToyCar.glb"
+          curl -fL --retry 3 -o godot/assets/props/Lantern.glb "$BASE/Lantern/glTF-Binary/Lantern.glb"
           test -s godot/assets/characters/CesiumMan.glb
-      - name: Importer les modèles et vérifier les scripts
+          test -s godot/assets/props/ToyCar.glb
+          test -s godot/assets/props/Lantern.glb
+      - name: Import Godot et validation du projet
         run: |
+          set -e
           godot --headless --path godot --editor --import --quit
           godot --headless --path godot --quit-after 10
-      - name: Conserver le projet avec les assets téléchargés
-        if: always()
+      - name: Export Godot Web pour Safari iPhone
+        run: |
+          mkdir -p web-build
+          godot --headless --path godot --export-release Web ../web-build/index.html
+          test -s web-build/index.html
+          test -n "$(find web-build -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find web-build -maxdepth 1 -name '*.pck' -print -quit)"
+      - name: Mettre en ligne sur GitHub Pages /play/
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p play
+          find play -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          cp -a web-build/. play/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add play
+          if ! git diff --cached --quiet; then
+            git commit -m "Publier build Godot Web pour iPhone [skip ci]"
+            git push
+          fi
+      - name: Archiver le jeu web
         uses: actions/upload-artifact@v4
         with:
-          name: metro-boulot-godot-source
-          path: godot/
+          name: metro-boulot-web
+          path: web-build/
           retention-days: 7
