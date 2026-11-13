@@ -16,3 +16,9 @@ Ouvrir le dossier `godot` dans Godot 4.3 ou version compatible et lancer la scè
 5. Mettre en place compilation iOS distante et distribution, sans abonnement supplémentaire tant qu'une option gratuite suffisante n'a pas été vérifiée.
 
 Aucun service payant ni crédit d'agent n'est utilisé par ces fichiers.
+
+## Intégration du personnage glTF
+Le workflow GitHub Actions `.github/workflows/godot-check.yml` télécharge `CesiumMan.glb` depuis Khronos dans `godot/assets/characters/` au moment de la validation. Le fichier binaire n'est **pas** encore versionné dans GitHub ; le projet utilise un avatar de secours si l'asset est absent. La licence et les conditions d'attribution du modèle doivent être vérifiées avant distribution. Le workflow publie une archive de travail téléchargeable depuis GitHub Actions, pas une application iPhone.
+
+## État des tests
+L'exécution du workflow et la validation Godot doivent être consultées dans l'onglet Actions. Le fait d'avoir ajouté le workflow ne prouve pas qu'il a réussi.
