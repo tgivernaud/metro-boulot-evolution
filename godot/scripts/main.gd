@@ -93,19 +93,22 @@ func _build_city() -> void:
             if ix == 0 and iz == 0:
                 continue
             var height := float(9 + posmod(ix * 3 + iz * 7, 4) * 3)
-            _box(self, Vector3(x,height/2.0,z),Vector3(11,height,11),facades[posmod(ix+iz,4)])
-            _box(self, Vector3(x,height+0.2,z),Vector3(12,0.4,12),Color("#454c55"))
-            for level in range(2,int(height)-1,3):
-                for offset in [-3.3,0.0,3.3]:
-                    _box(self, Vector3(x+offset,float(level),z-5.56),Vector3(1.7,1.8,0.08),Color("#6e9ba8"),false)
-                    _box(self, Vector3(x+offset,float(level),z+5.56),Vector3(1.7,1.8,0.08),Color("#6e9ba8"),false)
-                    _box(self, Vector3(x-5.56,float(level),z+offset),Vector3(0.08,1.8,1.7),Color("#6e9ba8"),false)
-                    _box(self, Vector3(x+5.56,float(level),z+offset),Vector3(0.08,1.8,1.7),Color("#6e9ba8"),false)
+            var model_index := posmod(ix * 7 + iz * 11,16)
+            var model_path := "res://assets/kenney/building_%02d.glb" % model_index
+            if not _place_building(model_path,Vector3(x,0,z),height):
+                _box(self, Vector3(x,height/2.0,z),Vector3(11,height,11),facades[posmod(ix+iz,4)])
+                _box(self, Vector3(x,height+0.2,z),Vector3(12,0.4,12),Color("#454c55"))
+                for level in range(2,int(height)-1,3):
+                    for offset in [-3.3,0.0,3.3]:
+                        _box(self, Vector3(x+offset,float(level),z-5.56),Vector3(1.7,1.8,0.08),Color("#6e9ba8"),false)
+                        _box(self, Vector3(x+offset,float(level),z+5.56),Vector3(1.7,1.8,0.08),Color("#6e9ba8"),false)
+                        _box(self, Vector3(x-5.56,float(level),z+offset),Vector3(0.08,1.8,1.7),Color("#6e9ba8"),false)
+                        _box(self, Vector3(x+5.56,float(level),z+offset),Vector3(0.08,1.8,1.7),Color("#6e9ba8"),false)
     # Real glTF props imported by the free GitHub build pipeline.
     for i in range(8):
         var car_x := float(-38 + (i % 4) * 24)
         var car_z := float(-29 + int(i / 4) * 48)
-        _place_glb("res://assets/props/ToyCar.glb", Vector3(car_x,0,car_z), 2.8, float(i % 2) * PI)
+        _place_glb("res://assets/props/ToyCar.glb", Vector3(car_x,0,car_z), 1.5, float(i % 2) * PI)
     for i in range(12):
         var lx := float(-35 + (i % 4) * 24)
         var lz := float(-35 + int(i / 4) * 24)
@@ -122,6 +125,30 @@ func _build_city() -> void:
     _box(self,Vector3(7,0.3,-7),Vector3(5,0.5,5),Color("#8396ac"))
     _box(self,Vector3(7,0.3,7),Vector3(5,0.5,5),Color("#b97b69"))
     _box(self,Vector3(-7,0.3,7),Vector3(5,0.5,5),Color("#8bb38c"))
+
+func _place_building(path: String, at: Vector3, desired_height: float) -> bool:
+    if not ResourceLoader.exists(path):
+        return false
+    var resource := load(path) as PackedScene
+    if resource == null:
+        return false
+    var instance := resource.instantiate() as Node3D
+    if instance == null:
+        return false
+    add_child(instance)
+    var bounds := _visual_bounds(instance)
+    var factor := minf(desired_height/maxf(bounds.size.y,0.001), 10.0/maxf(maxf(bounds.size.x,bounds.size.z),0.001))
+    instance.scale = Vector3.ONE * factor
+    instance.position = at - Vector3(bounds.get_center().x*factor,bounds.position.y*factor,bounds.get_center().z*factor)
+    var collision := StaticBody3D.new()
+    collision.position = at + Vector3(0,bounds.size.y*factor*0.5,0)
+    var shape := CollisionShape3D.new()
+    var box := BoxShape3D.new()
+    box.size = Vector3(maxf(1.0,bounds.size.x*factor),maxf(1.0,bounds.size.y*factor),maxf(1.0,bounds.size.z*factor))
+    shape.shape = box
+    collision.add_child(shape)
+    add_child(collision)
+    return true
 
 func _place_glb(path: String, at: Vector3, desired_height: float, rotation_angle: float) -> void:
     if not ResourceLoader.exists(path):
