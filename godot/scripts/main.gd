@@ -101,6 +101,15 @@ func _build_city() -> void:
                     _box(self, Vector3(x+offset,float(level),z+5.56),Vector3(1.7,1.8,0.08),Color("#6e9ba8"),false)
                     _box(self, Vector3(x-5.56,float(level),z+offset),Vector3(0.08,1.8,1.7),Color("#6e9ba8"),false)
                     _box(self, Vector3(x+5.56,float(level),z+offset),Vector3(0.08,1.8,1.7),Color("#6e9ba8"),false)
+    # Real glTF props imported by the free GitHub build pipeline.
+    for i in range(8):
+        var car_x := float(-38 + (i % 4) * 24)
+        var car_z := float(-29 + int(i / 4) * 48)
+        _place_glb("res://assets/props/ToyCar.glb", Vector3(car_x,0,car_z), 2.8, float(i % 2) * PI)
+    for i in range(12):
+        var lx := float(-35 + (i % 4) * 24)
+        var lz := float(-35 + int(i / 4) * 24)
+        _place_glb("res://assets/props/Lantern.glb", Vector3(lx,0,lz), 2.1, 0.0)
     for i in range(25):
         var x := float(-54 + (i % 5) * 24 + 2)
         var z := float(-54 + int(i / 5) * 24 + 2)
@@ -113,6 +122,40 @@ func _build_city() -> void:
     _box(self,Vector3(7,0.3,-7),Vector3(5,0.5,5),Color("#8396ac"))
     _box(self,Vector3(7,0.3,7),Vector3(5,0.5,5),Color("#b97b69"))
     _box(self,Vector3(-7,0.3,7),Vector3(5,0.5,5),Color("#8bb38c"))
+
+func _place_glb(path: String, at: Vector3, desired_height: float, rotation_angle: float) -> void:
+    if not ResourceLoader.exists(path):
+        return
+    var scene_resource := load(path) as PackedScene
+    if scene_resource == null:
+        return
+    var instance := scene_resource.instantiate() as Node3D
+    if instance == null:
+        return
+    add_child(instance)
+    var bounds := _visual_bounds(instance)
+    var size_y := maxf(bounds.size.y, 0.001)
+    var factor := desired_height / size_y
+    instance.scale = Vector3.ONE * factor
+    instance.position = at - Vector3(0,bounds.position.y * factor,0)
+    instance.rotation.y = rotation_angle
+
+func _visual_bounds(root: Node3D) -> AABB:
+    var found := false
+    var result := AABB(Vector3.ZERO,Vector3.ONE)
+    for child in root.find_children("*","MeshInstance3D",true,false):
+        var mesh_node := child as MeshInstance3D
+        if mesh_node == null or mesh_node.mesh == null:
+            continue
+        var box := mesh_node.get_aabb()
+        var transform_to_root := root.global_transform.affine_inverse() * mesh_node.global_transform
+        var transformed := transform_to_root * box
+        if not found:
+            result = transformed
+            found = true
+        else:
+            result = result.merge(transformed)
+    return result
 
 func _tree(at: Vector3) -> void:
     _box(self,at+Vector3(0,1.2,0),Vector3(0.5,2.4,0.5),Color("#705746"))
@@ -183,7 +226,10 @@ func _build_player() -> void:
             player.add_child(character)
             body.visible = false
             head.visible = false
-            character.scale = Vector3.ONE
+            var character_bounds := _visual_bounds(character)
+            var scale_factor := 1.9 / maxf(character_bounds.size.y,0.001)
+            character.scale = Vector3.ONE * scale_factor
+            character.position.y = -character_bounds.position.y * scale_factor
             var anims := character.find_children("*", "AnimationPlayer", true, false)
             for animation_node in anims:
                 var anim_player := animation_node as AnimationPlayer
@@ -217,8 +263,10 @@ func _build_ui() -> void:
     joystick_base = Control.new()
     joystick_base.anchor_top = 1
     joystick_base.anchor_bottom = 1
-    joystick_base.position = Vector2(110,-170)
-    joystick_base.custom_minimum_size = Vector2(180,180)
+    joystick_base.offset_left = 55
+    joystick_base.offset_right = 235
+    joystick_base.offset_top = -250
+    joystick_base.offset_bottom = -70
     root.add_child(joystick_base)
     var bg := ColorRect.new()
     bg.color = Color(0.15,0.2,0.3,0.3)
@@ -368,7 +416,7 @@ func _load_game() -> void:
     if not FileAccess.file_exists(SAVE_PATH):
         return
     var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-    if not parsed is Dictionary:
+    if not (parsed is Dictionary):
         return
     money = int(parsed.get("money",250))
     energy = int(parsed.get("energy",80))
